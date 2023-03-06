@@ -1,23 +1,15 @@
-import java.awt.BorderLayout;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.GregorianCalendar;
 import java.util.StringTokenizer;
-import javax.swing.DefaultListModel;
-import javax.swing.JButton;
-import javax.swing.JFileChooser;
-import javax.swing.JFrame;
-import javax.swing.JList;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
-import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
-import javax.swing.UnsupportedLookAndFeelException;
 
 @SuppressWarnings(value = "unchecked")
 public class Main extends JFrame {
@@ -55,6 +47,7 @@ public class Main extends JFrame {
             this.getContentPane().add(panelOfFields,BorderLayout.CENTER );
             panelOfButtons.add(addFilesButton);
             panelOfButtons.add(rmvFilesButton);
+            panelOfButtons.add(sanitizeButton);
             panelOfButtons.add(conversionButton);
             panelOfButtons.add(copyToClipboardButton);
             pack();
@@ -64,12 +57,16 @@ public class Main extends JFrame {
             rmvFilesButton.addActionListener((ActionEvent e) -> {
                 removeFileMethod();
             });
+            sanitizeButton.addActionListener((ActionEvent e) -> {
+                sanitizeInputMethod();
+            });
             conversionButton.addActionListener((ActionEvent e) -> {
                 convertFileMethod();
             });
             copyToClipboardButton.addActionListener((ActionEvent e) -> {
                 copyToClipboardMethod();
             });
+            conversionButton.setEnabled(false);
         }
         this.setDefaultCloseOperation(3);
     }
@@ -108,6 +105,97 @@ public class Main extends JFrame {
                 j--;
             }
         }
+    }
+    private void sanitizeInputMethod()
+    {
+        // this code shall provide simple sanitation of imput by removing files that are not .txt files
+        for(int j=0;j<localListModel.getSize();j++)
+        {
+            if(!((File)localListModel.get(j)).getName().substring(((File)localListModel.get(j)).getName().length()-3).equals("txt"))
+            {
+                localListModel.remove(j);
+                j--;
+            }
+            // else
+            // to do: add code that will check if the contents of files formatting is the same as e-mapa export
+        }
+        // this code shall fix the bug with multiple e-mapa exports within a minute
+        for(int j=0;j<localListModel.getSize();j++)
+        {
+            if(!(((File)localListModel.get(j)).getName().contains(" (") && ((File)localListModel.get(j)).getName().contains(").")))
+            {
+                ArrayList<File> listOfFilesToDebug = new ArrayList<File>();
+                for(int i=0;i<localListModel.getSize();i++)
+                {
+                    if((!(((File)localListModel.get(j)).getName().equals(((File)localListModel.get(i)).getName()))) && (((File)localListModel.get(j)).getName().substring(0,((File)localListModel.get(j)).getName().length()-4).equals(((File)localListModel.get(i)).getName().substring(0,((File)localListModel.get(j)).getName().length()-4))))
+                    {
+                        if(listOfFilesToDebug.size()!=0)
+                            listOfFilesToDebug.add((File)localListModel.get(i));
+                        else
+                        {
+                            listOfFilesToDebug.add((File)localListModel.get(j));
+                            listOfFilesToDebug.add((File)localListModel.get(i));
+                        }
+                    }
+                    if(i==(localListModel.getSize()-1) && listOfFilesToDebug.size()!=0)
+                    {
+                        listOfFilesToDebug.sort((File o1, File o2) -> {
+                            if(o1.getName().length() < o2.getName().length())  return -1;
+                            if(o1.getName().length() > o2.getName().length())  return 1;
+                            if(o1.getName().length() == o2.getName().length())
+                            {
+                                int o1Iterator=Integer.parseInt((String)(o1.getName().substring((o1.getName().indexOf('('))+1,(o1.getName().indexOf(')')))));
+                                int o2Iterator=Integer.parseInt((o2.getName().substring((o2.getName().indexOf('('))+1,(o2.getName().indexOf(')')))));
+                                return o1Iterator-o2Iterator;
+                            }
+                            return 0;
+                        });
+                        for(int k=listOfFilesToDebug.size()-1;k>0;k--)
+                        {
+                            File fileToFix = listOfFilesToDebug.get(k);
+                            File fileControl = listOfFilesToDebug.get(k-1);
+                            int linesToFix=0;
+                            int linesControl=0;
+                            try
+                            {
+                                BufferedReader readerToFix = new BufferedReader(new FileReader(fileToFix));
+                                BufferedReader readerControl = new BufferedReader(new FileReader(fileControl));
+                                String lineToFix = "";
+                                String lineControl = "";
+                                while((lineControl=readerControl.readLine())!=null)
+                                {
+                                    if(((lineToFix=readerToFix.readLine())!=null) && (lineToFix.equals(lineControl)))
+                                        linesToFix++;
+                                    linesControl++;
+                                }
+                                // due to small size of files ArrayList is acceptable
+                                ArrayList<String> linesAfterFix = new ArrayList<String>();
+                                String lineAfterFix = "";
+                                while((lineAfterFix=readerToFix.readLine())!=null)
+                                {
+                                    linesAfterFix.add(lineAfterFix);
+                                }
+                                if (linesToFix==linesControl)
+                                {
+                                    BufferedWriter writerToFix = new BufferedWriter(new FileWriter(fileToFix));
+                                    for(int l=0;l<linesAfterFix.size();l++)
+                                    {
+                                        writerToFix.write(linesAfterFix.get(l));
+                                        if(l<linesAfterFix.size()-1)writerToFix.newLine();
+                                    }
+                                    writerToFix.close();
+                                }
+                            }
+                            catch (IOException e)
+                            {
+                                JOptionPane.showMessageDialog(rootPane,e.getMessage());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        conversionButton.setEnabled(true);
     }
     private void convertFileMethod()
     {
@@ -155,6 +243,7 @@ public class Main extends JFrame {
     };
     private JButton addFilesButton = new JButton("Dodaj pliki");
     private JButton rmvFilesButton = new JButton("Usuń pliki");
+    private JButton sanitizeButton = new JButton("Sprawdź i napraw");
     private JButton conversionButton = new JButton("Konwertuj");
     private JButton copyToClipboardButton = new JButton("Kopiuj");
     private JPanel panelOfButtons = new JPanel();
@@ -166,5 +255,5 @@ public class Main extends JFrame {
     private JFileChooser localFileChooser = new JFileChooser();
     private GregorianCalendar currentDate = new GregorianCalendar();
     //simplest of DRMs
-    private GregorianCalendar endOfTimes = new GregorianCalendar(2023,3,15);
+    private GregorianCalendar endOfTimes = new GregorianCalendar(2023,4,15);
 }
