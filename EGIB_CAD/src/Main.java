@@ -255,5 +255,5 @@ public class Main extends JFrame {
     private JFileChooser localFileChooser = new JFileChooser();
     private GregorianCalendar currentDate = new GregorianCalendar();
     //simplest of DRMs
-    private GregorianCalendar endOfTimes = new GregorianCalendar(2023,4,15);
+    private GregorianCalendar endOfTimes = new GregorianCalendar(2023,11,15);
 }
